@@ -765,6 +765,7 @@ local function setupRemotes()
 					remotes.StatsUpdate:FireClient(player, {
 						Shards = profile.Shards, Rep = profile.Rep, XP = profile.XP,
 						FloorReached = profile.FloorReached,
+						CurrentFloor = profile.CurrentFloor,
 					})
 				end
 				break

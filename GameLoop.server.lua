@@ -13,27 +13,24 @@ local SPC = require(ReplicatedStorage:WaitForChild("ShadowProtocolConfig"))
 -- Initialize game manager (sets up remotes, player lifecycle, entity AI wiring)
 GameManager.Init()
 
--- Auto-start game after first player joins (MVP behavior)
-local gameStarted = false
-Players.PlayerAdded:Connect(function(player)
-	if not gameStarted and #Players:GetPlayers() >= 1 then
-		gameStarted = true
+-- G1.1 FIX: Auto-start game when players are present and in Lobby phase.
+-- Handles initial start AND restarts after all players leave and rejoin.
+-- The GameManager.EndRound() now also auto-starts after the intermission.
+local function tryAutoStart()
+	if #Players:GetPlayers() >= 1 and GameManager.GetPhase() == "Lobby" then
 		task.delay(5, function()
-			if GameManager.GetPhase() == "Lobby" then
+			if #Players:GetPlayers() >= 1 and GameManager.GetPhase() == "Lobby" then
 				GameManager.StartRound()
 			end
 		end)
 	end
+end
+
+Players.PlayerAdded:Connect(function(player)
+	tryAutoStart()
 end)
 
 -- Start if players already present (Studio testing)
-if #Players:GetPlayers() >= 1 then
-	gameStarted = true
-	task.delay(5, function()
-		if GameManager.GetPhase() == "Lobby" then
-			GameManager.StartRound()
-		end
-	end)
-end
+tryAutoStart()
 
 print("Shadow Protocol Game Loop started")

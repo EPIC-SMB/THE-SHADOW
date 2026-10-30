@@ -314,6 +314,16 @@ function GameManager.EndRound(reason, winner)
 
 	task.delay(10, function()
 		GameState.Phase = "Lobby"
+		-- G1.1 FIX: Auto-start next round after intermission
+		-- Guard against duplicate rounds: only start if in Lobby and players exist
+		if #Players:GetPlayers() >= 1 then
+			-- Small additional delay to ensure phase transition is complete
+			task.delay(1, function()
+				if GameManager.GetPhase() == "Lobby" then
+					GameManager.StartRound()
+				end
+			end)
+		end
 	end)
 end
 

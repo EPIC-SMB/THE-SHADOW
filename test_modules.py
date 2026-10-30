@@ -550,3 +550,58 @@ _g1_floor_after_death = GameManager.GetGameState().CurrentFloor
 test("G1: Death does not change current floor", lua.eval("_g1_floor_after_death") == 3)
 
 print("Total: " + str(passed) + " passed, " + str(failed) + " failed")
+
+# G1.1 Test: EndRound sets phase to Results (intermission starts)
+lua.execute("""
+EntityAI.DespawnAll()
+GameManager.GetGameState().CurrentFloor = 2
+GameManager.GetGameState().Phase = "Lobby"
+GameManager.StartRound()
+_g11_phase_before = GameManager.GetPhase()
+GameManager.EndRound("Escape", nil)
+_g11_phase_after_escape = GameManager.GetPhase()
+_g11_floor_after = GameManager.GetGameState().CurrentFloor
+""")
+test("G1.1: EndRound sets phase to Results (intermission)", lua.eval("_g11_phase_after_escape") == "Results")
+test("G1.1: Floor still increments on escape", lua.eval("_g11_floor_after") == 3)
+
+# G1.1 Test: EndRound on death sets phase to Results
+lua.execute("""
+EntityAI.DespawnAll()
+GameManager.GetGameState().CurrentFloor = 5
+GameManager.GetGameState().Phase = "Lobby"
+GameManager.StartRound()
+GameManager.EndRound("Death", nil)
+_g11_phase_after_death = GameManager.GetPhase()
+_g11_floor_after_death = GameManager.GetGameState().CurrentFloor
+""")
+test("G1.1: Death sets phase to Results", lua.eval("_g11_phase_after_death") == "Results")
+test("G1.1: Death does not change floor", lua.eval("_g11_floor_after_death") == 5)
+
+# G1.1 Test: EndRound on TimeUp sets phase to Results
+lua.execute("""
+EntityAI.DespawnAll()
+GameManager.GetGameState().CurrentFloor = 4
+GameManager.GetGameState().Phase = "Lobby"
+GameManager.StartRound()
+GameManager.EndRound("TimeUp", nil)
+_g11_phase_after_timeout = GameManager.GetPhase()
+_g11_floor_after_timeout = GameManager.GetGameState().CurrentFloor
+""")
+test("G1.1: TimeUp sets phase to Results", lua.eval("_g11_phase_after_timeout") == "Results")
+test("G1.1: TimeUp does not change floor", lua.eval("_g11_floor_after_timeout") == 4)
+
+# G1.1 Test: Victory flow on Floor 8
+lua.execute("""
+EntityAI.DespawnAll()
+GameManager.GetGameState().CurrentFloor = 8
+GameManager.GetGameState().Phase = "Lobby"
+GameManager.StartRound()
+GameManager.EndRound("Escape", nil)
+_g11_victory_floor = GameManager.GetGameState().CurrentFloor
+_g11_victory_allcleared = GameManager.GetGameState().LastRoundAllCleared
+""")
+test("G1.1: Floor 8 escape resets to Floor 1", lua.eval("_g11_victory_floor") == 1)
+test("G1.1: Floor 8 escape sets AllFloorsCleared flag", lua.eval("_g11_victory_allcleared") == True)
+
+print("Total: " + str(passed) + " passed, " + str(failed) + " failed")
