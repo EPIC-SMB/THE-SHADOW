@@ -66,10 +66,22 @@ ShadowProtocol/
 
 ## Verification
 
-Run the verification harness to test all game logic:
+Set up a Python environment once:
+
+```bash
+python -m venv .venv
+# Windows:
+.venv\Scriptsctivate
+# macOS/Linux:
+# source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Then run the test suites:
 
 ```bash
 python verify.py
+python test_modules.py
 ```
 
 This stubs the Roblox API and tests:
