@@ -195,7 +195,6 @@ function GameManager.StartRound()
 	GameState.CurrentRoom = 0
 	GameState.StartTime = tick()
 	GameState.TimeLimit = 600
-	GameState.LastRoundAllCleared = false
 
 	EntityAI.DespawnAll()
 	if GameState.FloorModel then
@@ -316,7 +315,9 @@ function GameManager.EndRound(reason, winner)
 		GameState.Phase = "Lobby"
 		-- G1.1 FIX: Auto-start next round after intermission
 		-- Guard against duplicate rounds: only start if in Lobby and players exist
-		if #Players:GetPlayers() >= 1 then
+		local hasPlayers = false
+		for _ in pairs(GameState.Players) do hasPlayers = true; break end
+		if hasPlayers then
 			-- Small additional delay to ensure phase transition is complete
 			task.delay(1, function()
 				if GameManager.GetPhase() == "Lobby" then

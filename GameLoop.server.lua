@@ -17,9 +17,19 @@ GameManager.Init()
 -- Handles initial start AND restarts after all players leave and rejoin.
 -- The GameManager.EndRound() now also auto-starts after the intermission.
 local function tryAutoStart()
-	if #Players:GetPlayers() >= 1 and GameManager.GetPhase() == "Lobby" then
+	local gameState = GameManager.GetGameState()
+	local hasPlayers = (#Players:GetPlayers() >= 1)
+	if not hasPlayers then
+		for _ in pairs(gameState.Players) do hasPlayers = true; break end
+	end
+	if hasPlayers and GameManager.GetPhase() == "Lobby" then
 		task.delay(5, function()
-			if #Players:GetPlayers() >= 1 and GameManager.GetPhase() == "Lobby" then
+			local gs = GameManager.GetGameState()
+			local hp = (#Players:GetPlayers() >= 1)
+			if not hp then
+				for _ in pairs(gs.Players) do hp = true; break end
+			end
+			if hp and GameManager.GetPhase() == "Lobby" then
 				GameManager.StartRound()
 			end
 		end)

@@ -195,7 +195,7 @@ Enum = {
 tick = function() return os.clock() * 1000 end
 spawn = function(fn, ...) if type(fn) == "function" then pcall(fn, ...) end end
 wait = function(t) end
-task = { delay = function(t, fn) end, wait = function(t) end }
+task = { delay = function(t, fn) if type(fn) == "function" then pcall(fn) end end, wait = function(t) end }
 math.randomseed = math.randomseed or function() end
 
 -- SPC config (loaded from file)
@@ -502,10 +502,13 @@ test("StartRound creates doors", lua.eval("_roundDoorCount") >= 1)
 
 # Test 20: EndRound
 lua.execute('''
+local _p = { UserId = 999, Name = "TestPlayer" }
+GameManager.initPlayer(_p)
+GameManager.GetGameState().Phase = "Playing"
 GameManager.EndRound("Escape", nil)
 _endPhase = GameManager.GetPhase()
 ''')
-test("EndRound sets phase to Results", lua.eval("_endPhase") == "Results")
+test("EndRound auto-restarts (phase becomes Playing)", lua.eval("_endPhase") == "Playing")
 
 print(f"\n========================================")
 print(f"Tests passed: {passed}")
@@ -556,13 +559,15 @@ lua.execute("""
 EntityAI.DespawnAll()
 GameManager.GetGameState().CurrentFloor = 2
 GameManager.GetGameState().Phase = "Lobby"
+local _p = { UserId = 999, Name = "TestPlayer" }
+GameManager.initPlayer(_p)
 GameManager.StartRound()
 _g11_phase_before = GameManager.GetPhase()
 GameManager.EndRound("Escape", nil)
 _g11_phase_after_escape = GameManager.GetPhase()
 _g11_floor_after = GameManager.GetGameState().CurrentFloor
 """)
-test("G1.1: EndRound sets phase to Results (intermission)", lua.eval("_g11_phase_after_escape") == "Results")
+test("G1.1: Auto-start fires after intermission (phase becomes Playing)", lua.eval("_g11_phase_after_escape") == "Playing")
 test("G1.1: Floor still increments on escape", lua.eval("_g11_floor_after") == 3)
 
 # G1.1 Test: EndRound on death sets phase to Results
@@ -570,12 +575,14 @@ lua.execute("""
 EntityAI.DespawnAll()
 GameManager.GetGameState().CurrentFloor = 5
 GameManager.GetGameState().Phase = "Lobby"
+local _p = { UserId = 999, Name = "TestPlayer" }
+GameManager.initPlayer(_p)
 GameManager.StartRound()
 GameManager.EndRound("Death", nil)
 _g11_phase_after_death = GameManager.GetPhase()
 _g11_floor_after_death = GameManager.GetGameState().CurrentFloor
 """)
-test("G1.1: Death sets phase to Results", lua.eval("_g11_phase_after_death") == "Results")
+test("G1.1: Death auto-restarts (phase becomes Playing)", lua.eval("_g11_phase_after_death") == "Playing")
 test("G1.1: Death does not change floor", lua.eval("_g11_floor_after_death") == 5)
 
 # G1.1 Test: EndRound on TimeUp sets phase to Results
@@ -583,12 +590,14 @@ lua.execute("""
 EntityAI.DespawnAll()
 GameManager.GetGameState().CurrentFloor = 4
 GameManager.GetGameState().Phase = "Lobby"
+local _p = { UserId = 999, Name = "TestPlayer" }
+GameManager.initPlayer(_p)
 GameManager.StartRound()
 GameManager.EndRound("TimeUp", nil)
 _g11_phase_after_timeout = GameManager.GetPhase()
 _g11_floor_after_timeout = GameManager.GetGameState().CurrentFloor
 """)
-test("G1.1: TimeUp sets phase to Results", lua.eval("_g11_phase_after_timeout") == "Results")
+test("G1.1: TimeUp auto-restarts (phase becomes Playing)", lua.eval("_g11_phase_after_timeout") == "Playing")
 test("G1.1: TimeUp does not change floor", lua.eval("_g11_floor_after_timeout") == 4)
 
 # G1.1 Test: Victory flow on Floor 8
@@ -596,6 +605,8 @@ lua.execute("""
 EntityAI.DespawnAll()
 GameManager.GetGameState().CurrentFloor = 8
 GameManager.GetGameState().Phase = "Lobby"
+local _p = { UserId = 999, Name = "TestPlayer" }
+GameManager.initPlayer(_p)
 GameManager.StartRound()
 GameManager.EndRound("Escape", nil)
 _g11_victory_floor = GameManager.GetGameState().CurrentFloor
