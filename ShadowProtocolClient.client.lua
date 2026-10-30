@@ -588,11 +588,16 @@ remotes.QuickChat.OnClientEvent:Connect(function(playerName, phrase)
 	print(playerName .. ": " .. phrase)
 end)
 
+-- Track current floor for display (G1 FIX)
+local currentFloorDisplay = 1
+
 -- ============================================================================
 -- Gameplay Remote Handlers
 -- ============================================================================
 remotes:WaitForChild("GameStart").OnClientEvent:Connect(function(floor, roomCount)
-	floorLabel.Text = string.format("Floor: %d/8 | Door: 0/%d", floor, roomCount)
+	-- G1 FIX: Track current floor for display
+	currentFloorDisplay = floor or 1
+	floorLabel.Text = string.format("Floor: %d/8 | Door: 0/%d", currentFloorDisplay, roomCount)
 	healthLabel.Text = "HP: 100/100 | Stamina: 100"
 	progressBarFill.Size = UDim2.new(0, 0, 1, 0)
 end)
@@ -610,7 +615,7 @@ remotes:WaitForChild("GameEnd").OnClientEvent:Connect(function(reason, data)
 end)
 
 remotes:WaitForChild("RoomUpdate").OnClientEvent:Connect(function(roomIndex, playerName)
-	floorLabel.Text = string.format("Floor: %d/8 | Door: %d/%d", 1, roomIndex, 10)
+	floorLabel.Text = string.format("Floor: %d/8 | Door: %d/%d", currentFloorDisplay, roomIndex, 10)
 	local progress = roomIndex / 10
 	progressBarFill.Size = UDim2.new(progress, 0, 1, 0)
 end)

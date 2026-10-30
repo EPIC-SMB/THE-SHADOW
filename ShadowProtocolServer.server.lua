@@ -350,6 +350,9 @@ local function awardFloorClear(player, floorIndex, difficulty, timeTaken, damage
 	if floorIndex > profile.FloorReached then
 		profile.FloorReached = floorIndex
 	end
+	-- G1 FIX: Update current floor in profile for client display
+	-- (floorIndex is the cleared floor; next floor is floorIndex + 1)
+	profile.CurrentFloor = (floorIndex >= 8) and 1 or (floorIndex + 1)
 	profile.DoorsOpened = profile.DoorsOpened + (floorIndex * 10)  -- approx
 
 	-- Stats

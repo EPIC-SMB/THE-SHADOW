@@ -513,3 +513,40 @@ print(f"Tests failed: {failed}")
 
 print("Total: " + str(passed) + " passed, " + str(failed) + " failed")
 
+
+# G1 Test: Floor progression on escape
+lua.execute("""
+EntityAI.DespawnAll()
+GameManager.GetGameState().CurrentFloor = 1
+GameManager.GetGameState().Phase = "Lobby"
+GameManager.StartRound()
+_g1_floor_before = GameManager.GetGameState().CurrentFloor
+GameManager.EndRound("Escape", nil)
+_g1_floor_after_escape = GameManager.GetGameState().CurrentFloor
+""")
+test("G1: Floor increments from 1 to 2 on escape", lua.eval("_g1_floor_after_escape") == 2)
+
+# G1 Test: Floor 8 wraps to 1
+lua.execute("""
+EntityAI.DespawnAll()
+GameManager.GetGameState().CurrentFloor = 8
+GameManager.GetGameState().Phase = "Lobby"
+GameManager.StartRound()
+GameManager.EndRound("Escape", nil)
+_g1_floor_after_last = GameManager.GetGameState().CurrentFloor
+""")
+test("G1: Floor 8 wraps to 1 on escape (victory reset)", lua.eval("_g1_floor_after_last") == 1)
+
+# G1 Test: Death does not change floor
+lua.execute("""
+EntityAI.DespawnAll()
+GameManager.GetGameState().CurrentFloor = 3
+GameManager.GetGameState().Phase = "Lobby"
+GameManager.StartRound()
+_g1_floor_before_death = GameManager.GetGameState().CurrentFloor
+GameManager.EndRound("Death", nil)
+_g1_floor_after_death = GameManager.GetGameState().CurrentFloor
+""")
+test("G1: Death does not change current floor", lua.eval("_g1_floor_after_death") == 3)
+
+print("Total: " + str(passed) + " passed, " + str(failed) + " failed")

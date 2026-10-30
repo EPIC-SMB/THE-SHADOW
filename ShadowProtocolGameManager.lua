@@ -33,6 +33,7 @@ local GameState = {
 	Doors = {},
 	Rooms = {},
 	HeartbeatConnection = nil,
+	LastRoundAllCleared = false,
 }
 
 -- ============================================================================
@@ -194,6 +195,7 @@ function GameManager.StartRound()
 	GameState.CurrentRoom = 0
 	GameState.StartTime = tick()
 	GameState.TimeLimit = 600
+	GameState.LastRoundAllCleared = false
 
 	EntityAI.DespawnAll()
 	if GameState.FloorModel then
@@ -286,12 +288,28 @@ function GameManager.EndRound(reason, winner)
 				entityEncounterBindable:Fire(player, "Watcher", true)
 			end
 		end
+
+		-- G1 FIX: Progress to next floor on escape
+		local wasLastFloor = (GameState.CurrentFloor >= 8)
+		if GameState.CurrentFloor < 8 then
+			GameState.CurrentFloor = GameState.CurrentFloor + 1
+		else
+			-- All 8 floors cleared — victory! Reset for replay
+			GameState.CurrentFloor = 1
+		end
+
+		-- Store victory flag for GameEndRemote
+		GameState.LastRoundAllCleared = wasLastFloor
 	end
+
+	-- On death, do NOT reset CurrentFloor (player retries same floor)
+	-- On time up, do NOT reset CurrentFloor (player retries same floor)
 
 	GameEndRemote:FireAllClients(reason, {
 		Floor = GameState.CurrentFloor,
 		Room = GameState.CurrentRoom,
 		Time = tick() - GameState.StartTime,
+		AllFloorsCleared = GameState.LastRoundAllCleared or false,
 	})
 
 	task.delay(10, function()
