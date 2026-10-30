@@ -605,8 +605,8 @@ lua.execute("""
 EntityAI.DespawnAll()
 GameManager.GetGameState().CurrentFloor = 8
 GameManager.GetGameState().Phase = "Lobby"
-local _p = { UserId = 999, Name = "TestPlayer" }
-GameManager.initPlayer(_p)
+-- Ensure no leftover players trigger auto-restart during the test
+for _p in pairs(GameManager.GetGameState().Players) do GameManager.GetGameState().Players[_p] = nil end
 GameManager.StartRound()
 GameManager.EndRound("Escape", nil)
 _g11_victory_floor = GameManager.GetGameState().CurrentFloor
@@ -614,5 +614,80 @@ _g11_victory_allcleared = GameManager.GetGameState().LastRoundAllCleared
 """)
 test("G1.1: Floor 8 escape resets to Floor 1", lua.eval("_g11_victory_floor") == 1)
 test("G1.1: Floor 8 escape sets AllFloorsCleared flag", lua.eval("_g11_victory_allcleared") == True)
+
+print("Total: " + str(passed) + " passed, " + str(failed) + " failed")
+
+
+# G1.3 Tests: Victory flag lifecycle
+print("\n=== G1.3: Victory Flag Lifecycle Tests ===")
+
+def _clear_players():
+    for _p in pairs(GameManager.GetGameState().Players):
+        GameManager.GetGameState().Players[_p] = nil
+
+# G1.3 Test 1: Victory flag true after Floor 8 escape (no auto-restart)
+lua.execute("""
+EntityAI.DespawnAll()
+GameManager.GetGameState().CurrentFloor = 8
+GameManager.GetGameState().Phase = "Lobby"
+for _p in pairs(GameManager.GetGameState().Players) do GameManager.GetGameState().Players[_p] = nil end
+GameManager.StartRound()
+GameManager.EndRound("Escape", nil)
+_g13_victory_flag_after_escape = GameManager.GetGameState().LastRoundAllCleared
+""")
+test("G1.3: Victory flag true after Floor 8 escape", lua.eval("_g13_victory_flag_after_escape") == True)
+
+# G1.3 Test 2: StartRound resets the victory flag for the next round
+lua.execute("""
+EntityAI.DespawnAll()
+GameManager.GetGameState().CurrentFloor = 8
+GameManager.GetGameState().Phase = "Lobby"
+for _p in pairs(GameManager.GetGameState().Players) do GameManager.GetGameState().Players[_p] = nil end
+GameManager.StartRound()
+GameManager.EndRound("Escape", nil)
+-- Next round begins; reset via StartRound
+GameManager.StartRound()
+_g13_flag_after_reset = GameManager.GetGameState().LastRoundAllCleared
+""")
+test("G1.3: StartRound resets victory flag to false", lua.eval("_g13_flag_after_reset") == False)
+
+# G1.3 Test 3: Death does not carry a stale victory flag
+lua.execute("""
+EntityAI.DespawnAll()
+GameManager.GetGameState().CurrentFloor = 3
+GameManager.GetGameState().Phase = "Lobby"
+for _p in pairs(GameManager.GetGameState().Players) do GameManager.GetGameState().Players[_p] = nil end
+GameManager.GetGameState().LastRoundAllCleared = True
+GameManager.StartRound()
+GameManager.EndRound("Death", nil)
+_g13_death_flag = GameManager.GetGameState().LastRoundAllCleared
+""")
+test("G1.3: Death resets victory flag to false", lua.eval("_g13_death_flag") == False)
+
+# G1.3 Test 4: TimeUp does not carry a stale victory flag
+lua.execute("""
+EntityAI.DespawnAll()
+GameManager.GetGameState().CurrentFloor = 4
+GameManager.GetGameState().Phase = "Lobby"
+for _p in pairs(GameManager.GetGameState().Players) do GameManager.GetGameState().Players[_p] = nil end
+GameManager.GetGameState().LastRoundAllCleared = True
+GameManager.StartRound()
+GameManager.EndRound("TimeUp", nil)
+_g13_timeup_flag = GameManager.GetGameState().LastRoundAllCleared
+""")
+test("G1.3: TimeUp resets victory flag to false", lua.eval("_g13_timeup_flag") == False)
+
+# G1.3 Test 5: Non-victory escape (floor < 8) clears the flag
+lua.execute("""
+EntityAI.DespawnAll()
+GameManager.GetGameState().CurrentFloor = 2
+GameManager.GetGameState().Phase = "Lobby"
+for _p in pairs(GameManager.GetGameState().Players) do GameManager.GetGameState().Players[_p] = nil end
+GameManager.GetGameState().LastRoundAllCleared = True
+GameManager.StartRound()
+GameManager.EndRound("Escape", nil)
+_g13_normal_escape_flag = GameManager.GetGameState().LastRoundAllCleared
+""")
+test("G1.3: Normal escape (floor<8) sets victory flag false", lua.eval("_g13_normal_escape_flag") == False)
 
 print("Total: " + str(passed) + " passed, " + str(failed) + " failed")

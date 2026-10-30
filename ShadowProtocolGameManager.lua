@@ -195,6 +195,9 @@ function GameManager.StartRound()
 	GameState.CurrentRoom = 0
 	GameState.StartTime = tick()
 	GameState.TimeLimit = 600
+	-- G1.3 FIX: Reset victory flag for the new round so a stale
+	-- "all floors cleared" state cannot leak into future rounds.
+	GameState.LastRoundAllCleared = false
 
 	EntityAI.DespawnAll()
 	if GameState.FloorModel then
@@ -301,8 +304,10 @@ function GameManager.EndRound(reason, winner)
 		GameState.LastRoundAllCleared = wasLastFloor
 	end
 
-	-- On death, do NOT reset CurrentFloor (player retries same floor)
-	-- On time up, do NOT reset CurrentFloor (player retries same floor)
+	-- G1.3 FIX: Any non-escape ending must not carry a stale victory flag.
+	if reason ~= "Escape" then
+		GameState.LastRoundAllCleared = false
+	end
 
 	GameEndRemote:FireAllClients(reason, {
 		Floor = GameState.CurrentFloor,
