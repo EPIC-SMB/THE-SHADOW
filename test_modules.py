@@ -191,11 +191,46 @@ Enum = {
 	TextXAlignment = { Left = "Left" },
 }
 
--- Roblox globals
-tick = function() return os.clock() * 1000 end
-spawn = function(fn, ...) if type(fn) == "function" then pcall(fn, ...) end end
-wait = function(t) end
-task = { delay = function(t, fn) if type(fn) == "function" then pcall(fn) end end, wait = function(t) end }
+-- Roblox globals (G1.4: fake timer with simulated time)
+fakeTime = 0
+_timers = {}
+local function _runDueTimers()
+	local progressed = true
+	while progressed do
+		progressed = false
+		local due = {}
+		for _, t in ipairs(_timers) do
+			if t.fireAt <= fakeTime then
+				table.insert(due, t)
+			end
+		end
+		for _, t in ipairs(due) do
+			for i = #_timers, 1, -1 do
+				if _timers[i] == t then table.remove(_timers, i) end
+			end
+			progressed = true
+			pcall(t.fn, table.unpack(t.args))
+		end
+	end
+end
+tick = function() return fakeTime end
+spawn = function(fn, ...) if type(fn) == "function" then task.delay(0, fn, ...) end end
+wait = function(t) return t or 0 end
+task = {
+	delay = function(delay, fn, ...)
+		if type(fn) == "function" then
+			local args = {...}
+			table.insert(_timers, { fireAt = fakeTime + (delay or 0), fn = fn, args = args })
+		end
+	end,
+	wait = function(t) return t or 0 end,
+	defer = function(fn, ...) task.delay(0, fn, ...) end,
+	spawn = function(fn, ...) task.delay(0, fn, ...) end,
+}
+advanceTime = function(seconds)
+	fakeTime = fakeTime + (seconds or 0)
+	_runDueTimers()
+end
 math.randomseed = math.randomseed or function() end
 
 -- SPC config (loaded from file)
@@ -506,6 +541,8 @@ local _p = { UserId = 999, Name = "TestPlayer" }
 GameManager.initPlayer(_p)
 GameManager.GetGameState().Phase = "Playing"
 GameManager.EndRound("Escape", nil)
+advanceTime(10)
+advanceTime(1)
 _endPhase = GameManager.GetPhase()
 ''')
 test("EndRound auto-restarts (phase becomes Playing)", lua.eval("_endPhase") == "Playing")
@@ -564,6 +601,8 @@ GameManager.initPlayer(_p)
 GameManager.StartRound()
 _g11_phase_before = GameManager.GetPhase()
 GameManager.EndRound("Escape", nil)
+advanceTime(10)
+advanceTime(1)
 _g11_phase_after_escape = GameManager.GetPhase()
 _g11_floor_after = GameManager.GetGameState().CurrentFloor
 """)
@@ -579,6 +618,8 @@ local _p = { UserId = 999, Name = "TestPlayer" }
 GameManager.initPlayer(_p)
 GameManager.StartRound()
 GameManager.EndRound("Death", nil)
+advanceTime(10)
+advanceTime(1)
 _g11_phase_after_death = GameManager.GetPhase()
 _g11_floor_after_death = GameManager.GetGameState().CurrentFloor
 """)
@@ -594,6 +635,8 @@ local _p = { UserId = 999, Name = "TestPlayer" }
 GameManager.initPlayer(_p)
 GameManager.StartRound()
 GameManager.EndRound("TimeUp", nil)
+advanceTime(10)
+advanceTime(1)
 _g11_phase_after_timeout = GameManager.GetPhase()
 _g11_floor_after_timeout = GameManager.GetGameState().CurrentFloor
 """)
@@ -689,5 +732,70 @@ GameManager.EndRound("Escape", nil)
 _g13_normal_escape_flag = GameManager.GetGameState().LastRoundAllCleared
 """)
 test("G1.3: Normal escape (floor<8) sets victory flag false", lua.eval("_g13_normal_escape_flag") == False)
+
+print("Total: " + str(passed) + " passed, " + str(failed) + " failed")
+
+# G1.4 Tests: Fake timer / delayed transition timing
+print("\n=== G1.4: Fake Timer Timing Tests ===")
+
+# G1.4 Test 1: Stays in Results before 10 seconds
+lua.execute("""
+EntityAI.DespawnAll()
+GameManager.GetGameState().CurrentFloor = 2
+GameManager.GetGameState().Phase = "Lobby"
+for _p in pairs(GameManager.GetGameState().Players) do GameManager.GetGameState().Players[_p] = nil end
+local _p = { UserId = 777, Name = "TimerPlayer" }
+GameManager.initPlayer(_p)
+GameManager.StartRound()
+GameManager.EndRound("Escape", nil)
+fakeTime = 0
+_timers = {}
+-- re-run scheduling at current fakeTime? Need schedule relative; redo EndRound cleanly
+""")
+# Redo cleanly with reset time before EndRound
+lua.execute("""
+EntityAI.DespawnAll()
+GameManager.GetGameState().CurrentFloor = 2
+GameManager.GetGameState().Phase = "Lobby"
+for _p in pairs(GameManager.GetGameState().Players) do GameManager.GetGameState().Players[_p] = nil end
+local _p = { UserId = 777, Name = "TimerPlayer" }
+GameManager.initPlayer(_p)
+fakeTime = 0
+_timers = {}
+GameManager.StartRound()
+GameManager.EndRound("Escape", nil)
+advanceTime(9)
+_g14_phase_before_10 = GameManager.GetPhase()
+""")
+test("G1.4: Stays in Results before 10 seconds", lua.eval("_g14_phase_before_10") == "Results")
+
+# G1.4 Test 2: Switches to Lobby after 10 seconds
+lua.execute("""
+advanceTime(1)
+_g14_phase_after_10 = GameManager.GetPhase()
+""")
+test("G1.4: Switches to Lobby after 10 seconds", lua.eval("_g14_phase_after_10") == "Lobby")
+
+# G1.4 Test 3: Starts next round only after additional 1s when players present
+lua.execute("""
+advanceTime(1)
+_g14_phase_after_11 = GameManager.GetPhase()
+""")
+test("G1.4: Starts next round after 10+1 seconds (players present)", lua.eval("_g14_phase_after_11") == "Playing")
+
+# G1.4 Test 4: No auto-start when no players present (stays Lobby)
+lua.execute("""
+EntityAI.DespawnAll()
+GameManager.GetGameState().CurrentFloor = 3
+GameManager.GetGameState().Phase = "Lobby"
+for _p in pairs(GameManager.GetGameState().Players) do GameManager.GetGameState().Players[_p] = nil end
+fakeTime = 0
+_timers = {}
+GameManager.StartRound()
+GameManager.EndRound("Death", nil)
+advanceTime(11)
+_g14_phase_no_players = GameManager.GetPhase()
+""")
+test("G1.4: No auto-start when no players (stays Lobby)", lua.eval("_g14_phase_no_players") == "Lobby")
 
 print("Total: " + str(passed) + " passed, " + str(failed) + " failed")
