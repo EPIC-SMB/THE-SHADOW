@@ -209,7 +209,17 @@ local function _runDueTimers()
 				if _timers[i] == t then table.remove(_timers, i) end
 			end
 			progressed = true
-			pcall(t.fn, table.unpack(t.args))
+			local ok, err = pcall(t.fn, table.unpack(t.args))
+			if not ok then
+				local msg = "Timer callback error: " .. tostring(err)
+				print(msg)
+				_timerLastError = tostring(err)
+				_timerErrors = _timerErrors or {}
+				table.insert(_timerErrors, tostring(err))
+				if type(_onTimerError) == "function" then
+					pcall(_onTimerError, err)
+				end
+			end
 		end
 	end
 end
