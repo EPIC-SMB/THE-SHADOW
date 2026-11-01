@@ -336,7 +336,8 @@ end
 -- ============================================================================
 -- Door Interaction
 -- ============================================================================
-DoorInteractRemote.OnServerInvoke = function(player, doorIndex)
+-- Exposed so tests can exercise the door flow directly.
+function GameManager.OpenDoor(player, doorIndex)
 	-- Rate limit
 	if not checkRateLimit(player, "DoorInteract") then
 		return false, "Rate limited"
@@ -361,8 +362,9 @@ DoorInteractRemote.OnServerInvoke = function(player, doorIndex)
 	end
 
 	local door = GameState.Doors[doorIndex]
-	if not door then
-		return false, "Door not found"
+	-- Treat destroyed/removed doors as already open so re-triggering is safe.
+	if not door or door.Parent == nil then
+		return true, "Already open"
 	end
 
 	-- Check distance
@@ -378,12 +380,20 @@ DoorInteractRemote.OnServerInvoke = function(player, doorIndex)
 
 	local isOpen = door:GetAttribute("IsOpen")
 	if isOpen then
+		-- Ensure client-visible state is synced even on repeat triggers.
+		door.Transparency = 0.5
+		door.CanCollide = false
+		local prompt = door:FindFirstChildOfClass("ProximityPrompt")
+		if prompt then prompt.Enabled = false end
 		return true, "Already open"
 	end
 
 	door:SetAttribute("IsOpen", true)
+	-- Open state: visually semi-transparent and physically passable.
 	door.Transparency = 0.5
 	door.CanCollide = false
+	local prompt = door:FindFirstChildOfClass("ProximityPrompt")
+	if prompt then prompt.Enabled = false end
 
 	data.CurrentRoom = doorIndex
 	RoomUpdateRemote:FireAllClients(doorIndex, player.Name)
@@ -394,6 +404,8 @@ DoorInteractRemote.OnServerInvoke = function(player, doorIndex)
 
 	return true, "Door opened"
 end
+
+DoorInteractRemote.OnServerInvoke = GameManager.OpenDoor
 
 -- ============================================================================
 -- Hide Mechanic

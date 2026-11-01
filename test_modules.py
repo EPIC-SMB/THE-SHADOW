@@ -29,6 +29,7 @@ function Vector3.new(x, y, z)
 	if mag > 0 then ux, uy, uz = (x or 0)/mag, (y or 0)/mag, (z or 0)/mag end
 	t.Unit = { X = ux, Y = uy, Z = uz, Dot = function(self, other) return self.X * other.X + self.Y * other.Y + self.Z * other.Z end }
 	t.Dot = function(self, other) return self.X * other.X + self.Y * other.Y + self.Z * other.Z end
+	t.Magnitude = mag
 	return t
 end
 Vector3.zero = Vector3.new(0,0,0)
@@ -544,6 +545,41 @@ test("StartRound sets phase to Playing", lua.eval("_roundPhase") == "Playing")
 test("StartRound sets RoomCount", lua.eval("_roundRoomCount") >= 1)
 test("StartRound creates FloorModel", lua.eval("_roundHasFloorModel") == True)
 test("StartRound creates doors", lua.eval("_roundDoorCount") >= 1)
+
+# Door Interaction Test
+lua.execute('''
+EntityAI.DespawnAll()
+GameManager.GetGameState().CurrentFloor = 1
+GameManager.GetGameState().Phase = "Lobby"
+local _dp = { UserId = 777, Name = "DoorTester" }
+GameManager.initPlayer(_dp)
+GameManager.StartRound()
+-- Attach a character positioned at door 1 after spawn to avoid CFrame stub issues
+local _dchar = Instance.new("Model")
+_dchar.Name = "Character"
+local _droot = Instance.new("Part")
+_droot.Name = "HumanoidRootPart"
+_droot.Position = Vector3.new(0, 0, 0)
+_droot.Parent = _dchar
+_dp.Character = _dchar
+local _door = GameManager.GetGameState().Doors[1]
+_droot.Position = _door.Position
+local _dok, _dmsg = GameManager.OpenDoor(_dp, 1)
+_door_open_ok = _dok
+_door_open_msg = _dmsg
+_door_isOpen = _door:GetAttribute("IsOpen")
+_door_transparency = _door.Transparency
+_door_canCollide = _door.CanCollide
+local _dprompt = _door:FindFirstChildOfClass("ProximityPrompt")
+_door_prompt_enabled = (_dprompt ~= nil) and _dprompt.Enabled or false
+GameManager.cleanupPlayer(_dp)
+''')
+test("Door opens successfully", lua.eval("_door_open_ok") == True)
+test("Door open message", lua.eval("_door_open_msg") == "Door opened")
+test("Door IsOpen attribute set", lua.eval("_door_isOpen") == True)
+test("Door becomes semi-transparent", lua.eval("_door_transparency") == 0.5)
+test("Door becomes non-collidable", lua.eval("_door_canCollide") == False)
+test("Door prompt disabled after open", lua.eval("_door_prompt_enabled") == False)
 
 # Test 20: EndRound
 lua.execute('''

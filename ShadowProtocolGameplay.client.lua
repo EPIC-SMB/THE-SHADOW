@@ -119,6 +119,12 @@ local function interactWithDoor(doorPart)
 	if success then
 		-- Door opened successfully
 		print("Door " .. doorIndex .. " opened: " .. message)
+		-- Reflect open state locally so the client sees it immediately even if
+		-- server property replication lags for this anchored part.
+		doorPart.Transparency = 0.5
+		doorPart.CanCollide = false
+		local prompt = doorPart:FindFirstChildOfClass("ProximityPrompt")
+		if prompt then prompt.Enabled = false end
 	else
 		print("Cannot open door: " .. message)
 	end
