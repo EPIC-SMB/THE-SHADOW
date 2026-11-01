@@ -394,6 +394,9 @@ function GameManager.OpenDoor(player, doorIndex)
 	door.CanCollide = false
 	local prompt = door:FindFirstChildOfClass("ProximityPrompt")
 	if prompt then prompt.Enabled = false end
+	-- Slide the door panel up and out of the doorway so it no longer blocks
+	-- (anchored parts may keep a stale collision cache until moved).
+	door.Position = door.Position + Vector3.new(0, door.Size.Y + 2, 0)
 
 	data.CurrentRoom = doorIndex
 	RoomUpdateRemote:FireAllClients(doorIndex, player.Name)

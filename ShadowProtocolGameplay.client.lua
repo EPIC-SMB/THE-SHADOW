@@ -125,6 +125,8 @@ local function interactWithDoor(doorPart)
 		doorPart.CanCollide = false
 		local prompt = doorPart:FindFirstChildOfClass("ProximityPrompt")
 		if prompt then prompt.Enabled = false end
+		-- Mirror the server-side slide so the client sees it open immediately.
+		doorPart.Position = doorPart.Position + Vector3.new(0, doorPart.Size.Y + 2, 0)
 	else
 		print("Cannot open door: " .. message)
 	end
